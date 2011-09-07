@@ -21,15 +21,21 @@ Statsd - Perl client for Etsy's statsd daemon
     $Statsd::HOST = 'localhost';    # Default
     $Statsd::PORT = 8125;           # Default
 
+    # Create Statsd object.
+    my $statsd = Statsd->new(
+        host => 'localhost',         # Optional
+        port => '8125'               # Optional
+    );
+
     # Keep track of events as counters
-    Statsd::increment('site.logins');
-    Statsd::increment('database.connects');
+    $statsd->increment('site.logins');
+    $statsd->increment('database.connects');
 
     # Log timing of events, ex. db queries
     use Time::HiRes;
     my $start_time = [ Time::HiRes::gettimeofday ];
     # do the complex database query
-    Statsd::timing(
+    $statsd->timing(
         'database.complexquery',
         Time::HiRes::tv_interval($start_time)
     );
@@ -63,6 +69,12 @@ with:
     $Statsd::PORT = 9999;
 
 just after including the C<Statsd> module.
+Or you can specify the host and port while creating the Statsd object:
+
+    my $stats->new(
+        host => 'your.statsd.hostname.net',
+        port => 9999;
+    );
 
 =head1 FUNCTIONS
 
@@ -70,7 +82,13 @@ just after including the C<Statsd> module.
 
 =head2 new
 
-create a new Statd Object
+create a new Statsd Object. The UDP Socket is created here
+    
+    my $stats->new(
+        host => 'your.statsd.hostname.net',
+        port => 9999;
+    );
+
 
 =cut
 
@@ -100,7 +118,7 @@ sub new {
 Log timing information.
 Time is assumed to be in milliseconds (ms).
 
-    Statsd::timing('some.time', 500);
+    $statsd->timing('some.time', 500);
 
 =cut
 
@@ -119,15 +137,15 @@ sub timing {
 Increments one or more stats counters
 
     # +1 on 'some.int'
-    Statsd::increment('some.int');
+    $statsd->increment('some.int');
 
     # 0.5 = 50% sampling
-    Statsd::increment('some.int', 0.5);
+    $statsd->increment('some.int', 0.5);
 
 To increment more than one counter at a time,
 you can B<pass an array reference>:
 
-    Statsd::increment(['grue.dinners', 'room.lamps'], 1);
+    $statsd->increment(['grue.dinners', 'room.lamps'], 1);
 
 =cut
 
@@ -141,7 +159,7 @@ sub increment {
 
 Same as increment, but decrements. Yay.
 
-    Statsd::decrement('some.int')
+    $statsd->decrement('some.int')
 
 =cut
 
@@ -155,11 +173,11 @@ sub decrement {
 
 Updates one or more stats counters by arbitrary amounts
 
-    Statsd::update_stats('some.int', 10)
+    $statsd->update_stats('some.int', 10)
 
 equivalent to:
 
-    Statsd::update_stats('some.int', 10, 1)
+    $statsd->update_stats('some.int', 10, 1)
 
 A sampling rate less than 1 means only update the stats
 every x number of times (0.1 = 10% of the times).
@@ -188,7 +206,7 @@ sub update_stats {
 
 Squirt the metrics over UDP.
 
-    Statsd::send({ 'some.int' => 1 });
+    $statsd->send({ 'some.int' => 1 });
 
 =cut
 
@@ -207,7 +225,7 @@ sub send {
     else {
         %sampled_data = %{ $data };
     }
-    # We don't want to die if Statsd::send() doesn't work...
+    # We don't want to die if $statsd->send() doesn't work...
     # We could though:
     #
     # or die "Could not create UDP socket: $!\n";
