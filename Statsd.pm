@@ -42,7 +42,7 @@ Statsd - Perl client for Etsy's statsd daemon
 
 =head1 DESCRIPTION
 
-This module implement a UDP client for the B<statsd> statistics
+This module implements a UDP client for the B<statsd> statistics
 collector daemon in use at Etsy.com.
 
 You want to use this module to track statistics in your Perl
