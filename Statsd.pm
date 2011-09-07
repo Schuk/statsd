@@ -246,12 +246,4 @@ sub send {
     return $all_sent;
 }
 
-unless (caller) {
-    Statsd::increment('test.counter1');
-    Statsd::increment('test.counter2');
-    Statsd::decrement('test.counter1');
-    Statsd::decrement('test.counter2');
-}
-
 1;
-
