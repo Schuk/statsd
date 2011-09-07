@@ -8,7 +8,7 @@ use warnings;
 use IO::Socket ();
 
 our $HOST = 'localhost';
-our $POST = 8125;
+our $PORT = 8125;
 
 =head1 NAME
 
@@ -68,6 +68,33 @@ just after including the C<Statsd> module.
 
 =cut
 
+=head2 new
+
+create a new Statd Object
+
+=cut
+
+sub new {
+    my $class = shift();
+    my %params = @_;
+    my $self = {};
+
+    $HOST = $params{host} if $params{host};
+    $PORT = $params{port} if $params{port};
+    $self->{host} = $HOST;
+    $self->{port} = $PORT;
+    
+    $self->{udp_sock} = IO::Socket::INET->new( Proto    => 'udp',
+        PeerAddr => $HOST,
+        PeerPort => $PORT,
+    ) or return;
+
+    bless $self, $class;
+
+
+    return $self;
+}
+
 =head2 C<timing($stat, $time, $sample_rate = 1)>
 
 Log timing information.
@@ -78,13 +105,13 @@ Time is assumed to be in milliseconds (ms).
 =cut
 
 sub timing {
-    my ($stat, $time, $sample_rate) = @_;
+    my ($self, $stat, $time, $sample_rate) = @_;
 
     my $stats = {
         $stat => sprintf "%d|ms", $time
     };
 
-    return Statsd::send($stats, $sample_rate);
+    return $self->send($stats, $sample_rate);
 }
 
 =head2 C<increment($stats, $sample_rate=1)>
@@ -105,9 +132,9 @@ you can B<pass an array reference>:
 =cut
 
 sub increment {
-    my ($stats, $sample_rate) = @_;
+    my ($self, $stats, $sample_rate) = @_;
 
-    return Statsd::update_stats($stats, 1, $sample_rate);
+    return $self->update_stats($stats, 1, $sample_rate);
 }
 
 =head2 C<decrement($stats, $sample_rate=1)>
@@ -119,9 +146,9 @@ Same as increment, but decrements. Yay.
 =cut
 
 sub decrement {
-    my ($stats, $sample_rate) = @_;
+    my ($self, $stats, $sample_rate) = @_;
 
-    return Statsd::update_stats($stats, -1, $sample_rate);
+    return $self->update_stats($stats, -1, $sample_rate);
 }
 
 =head2 C<update_stats($stats, $delta=1, $sample_rate=1)>
@@ -140,7 +167,7 @@ every x number of times (0.1 = 10% of the times).
 =cut
 
 sub update_stats {
-    my ($stats, $delta, $sample_rate) = @_;
+    my ($self, $stats, $delta, $sample_rate) = @_;
 
     $delta = 1 unless defined $delta;
     $sample_rate = 1 unless defined $sample_rate;
@@ -154,7 +181,7 @@ sub update_stats {
 
     my %data = map { $_ => sprintf "%s|c", $delta } @{ $stats };
 
-    return Statsd::send(\%data, $sample_rate)
+    return $self->send(\%data, $sample_rate)
 }
 
 =head2 C<send(\%data, $sample_rate=1)>
@@ -166,7 +193,7 @@ Squirt the metrics over UDP.
 =cut
 
 sub send {
-    my ($data, $sample_rate) = @_;
+    my ($self, $data, $sample_rate) = @_;
 
     my %sampled_data;
 
@@ -180,13 +207,6 @@ sub send {
     else {
         %sampled_data = %{ $data };
     }
-
-    my $udp_sock = IO::Socket::INET->new(
-        Proto    => 'udp',
-        PeerAddr => $HOST,
-        PeerPort => $PORT,
-    ) or return;
-
     # We don't want to die if Statsd::send() doesn't work...
     # We could though:
     #
@@ -197,7 +217,7 @@ sub send {
     for my $stat (keys %sampled_data) {
         my $value =$data->{$stat};
         my $packet = "$stat:$value";
-        $udp_sock->send($packet);
+        $self->{udp_sock}->send($packet);
         # XXX If you want warnings...
         # or do {
         #    warn "[" . localtime() . "] UDP packet '$packet' send failed\n";
